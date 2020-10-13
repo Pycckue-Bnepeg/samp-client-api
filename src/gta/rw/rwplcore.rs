@@ -7,10 +7,11 @@ pub struct RwRGBA {
 }
 
 #[repr(C)]
+#[derive(Clone)]
 pub struct RwSurfaceProperties {
-    pub ambient: f32, // ambient reflection coefficient
+    pub ambient: f32,  // ambient reflection coefficient
     pub specular: f32, // specular reflection coefficient
-    pub diffuse: f32, // reflection coefficient
+    pub diffuse: f32,  // reflection coefficient
 }
 
 #[repr(C)]
