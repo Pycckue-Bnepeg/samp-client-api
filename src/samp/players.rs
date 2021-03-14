@@ -1,6 +1,6 @@
-use super::{v037r3 as r3, v037 as r1};
-use super::version::{Version, version};
-use crate::gta::matrix::{RwMatrix, CVector};
+use super::version::{version, Version};
+use super::{v037 as r1, v037r3 as r3};
+use crate::gta::matrix::{CVector, RwMatrix};
 
 #[repr(C, packed)]
 pub struct GamePed {
@@ -73,6 +73,18 @@ impl<'a> LocalPlayer<'a> {
 
         None
     }
+
+    pub fn ped(&self) -> *const () {
+        if let Some(player) = self.player_v1.as_ref() {
+            return unsafe { (*player.m_pPed).m_pGamePed as *mut _ };
+        }
+
+        if let Some(player) = self.player_v3.as_ref() {
+            return unsafe { (*player.m_pPed).m_pGamePed as *mut _ };
+        }
+
+        std::ptr::null()
+    }
 }
 
 pub struct PlayerPool<'a> {
@@ -102,8 +114,14 @@ impl<'a> Player<'a> {
 
     pub fn remote_player(&self) -> Option<RemotePlayer> {
         Some(RemotePlayer {
-            remote_v1: self.player_v1.as_ref().and_then(|player| player.remote_player()),
-            remote_v3: self.player_v3.as_ref().and_then(|player| player.remote_player()),
+            remote_v1: self
+                .player_v1
+                .as_ref()
+                .and_then(|player| player.remote_player()),
+            remote_v3: self
+                .player_v3
+                .as_ref()
+                .and_then(|player| player.remote_player()),
         })
     }
 
@@ -237,16 +255,28 @@ impl<'a> RemotePlayer<'a> {
 
 pub fn local_player<'a>() -> Option<LocalPlayer<'a>> {
     match version() {
-        Version::V037 => Some(LocalPlayer { player_v1: r1::local_player(), player_v3: None }),
-        Version::V037R3 => Some(LocalPlayer { player_v1: None, player_v3: r3::local_player() }),
+        Version::V037 => Some(LocalPlayer {
+            player_v1: r1::local_player(),
+            player_v3: None,
+        }),
+        Version::V037R3 => Some(LocalPlayer {
+            player_v1: None,
+            player_v3: r3::local_player(),
+        }),
         _ => None,
     }
 }
 
 pub fn find_player<'a>(id: i32) -> Option<Player<'a>> {
     match version() {
-        Version::V037 => Some(Player { player_v1: r1::find_player(id), player_v3: None }),
-        Version::V037R3 => Some(Player { player_v1: None, player_v3: r3::find_player(id) }),
+        Version::V037 => Some(Player {
+            player_v1: r1::find_player(id),
+            player_v3: None,
+        }),
+        Version::V037R3 => Some(Player {
+            player_v1: None,
+            player_v3: r3::find_player(id),
+        }),
         _ => None,
     }
 }
@@ -281,9 +311,7 @@ impl<'a> Iterator for PlayersIterator<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(players) = self.players_v1.as_ref() {
             while self.index >= 0 && self.index < 1000 {
-                if let Some(player) = players.get(self.index)
-                    .filter(|player| !player.is_null()) {
-
+                if let Some(player) = players.get(self.index).filter(|player| !player.is_null()) {
                     self.index += 1;
                     return Some(Player::new_v1(unsafe { &mut **player }));
                 }
@@ -294,9 +322,7 @@ impl<'a> Iterator for PlayersIterator<'a> {
 
         if let Some(players) = self.players_v3.as_ref() {
             while self.index >= 0 && self.index < 1000 {
-                if let Some(player) = players.get(self.index)
-                    .filter(|player| !player.is_null()) {
-
+                if let Some(player) = players.get(self.index).filter(|player| !player.is_null()) {
                     self.index += 1;
                     return Some(Player::new_v3(unsafe { &mut **player }));
                 }
