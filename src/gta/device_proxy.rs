@@ -11,11 +11,12 @@ use winapi::um::winnt::{HANDLE, HRESULT, VOID};
 
 use crate::utils::error_message_box;
 
-use super::d9_proxy::{leak, OnRender, OnReset};
+use super::d9_proxy::{leak, OnDestroy, OnRender, OnReset};
 
 static mut D3D9_DEVICE: *mut IDirect3DDevice9 = 0 as *mut _;
 static mut RENDER_HOOK_FN: Option<OnRender> = None;
 static mut RESET_HOOK_FN: Option<OnReset> = None;
+static mut DESTROY_HOOK_FN: Option<OnDestroy> = None;
 static mut THIS_DEVICE: *mut IDirect3DDevice9 = 0 as *mut _;
 
 #[repr(C)]
@@ -27,6 +28,7 @@ pub fn set_proxy(
     origin: *mut IDirect3DDevice9,
     render: Option<OnRender>,
     reset: Option<OnReset>,
+    destroy: Option<OnDestroy>,
 ) -> *mut IDirect3DDevice9 {
     unsafe {
         let vftable = create_vftable();
@@ -40,6 +42,7 @@ pub fn set_proxy(
         D3D9_DEVICE = origin;
         RENDER_HOOK_FN = render;
         RESET_HOOK_FN = reset;
+        DESTROY_HOOK_FN = destroy;
         THIS_DEVICE = ptr;
 
         ptr
@@ -48,6 +51,10 @@ pub fn set_proxy(
 
 fn delete(obj: *mut Device) {
     unsafe {
+        if let Some(func) = DESTROY_HOOK_FN {
+            func(device());
+        }
+
         let device = Box::from_raw(obj);
         let vftable = Box::from_raw(device.vftable);
         drop(vftable);

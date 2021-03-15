@@ -17,10 +17,12 @@ static mut DEVICE_HOOK: Option<GenericDetour<CreateDevice>> = None;
 static mut ON_CREATE: Option<OnCreate> = None;
 static mut ON_RENDER: Option<OnRender> = None;
 static mut ON_RESET: Option<OnReset> = None;
+static mut ON_DESTROY: Option<OnDestroy> = None;
 
 pub type OnCreate = fn();
 pub type OnRender = fn(&mut IDirect3DDevice9);
 pub type OnReset = fn(&mut IDirect3DDevice9, u8);
+pub type OnDestroy = fn(&mut IDirect3DDevice9);
 
 #[repr(C)]
 struct Direct3D {
@@ -40,8 +42,12 @@ impl Direct3D {
     }
 }
 
-pub fn set_proxy(on_create: OnCreate, on_render: OnRender, on_reset: OnReset) {
-    //    if let Some(func) = crate::utils::find_function::<CreateDevice>("d3d9.dll", "Direct3DCreate9") {
+pub fn set_proxy(
+    on_create: OnCreate,
+    on_render: OnRender,
+    on_reset: OnReset,
+    on_destroy: OnDestroy,
+) {
     unsafe {
         let func: CreateDevice = std::mem::transmute(0x807C2B);
         let mut hook = GenericDetour::new(func, hook_direct3d_create9).unwrap();
@@ -50,12 +56,10 @@ pub fn set_proxy(on_create: OnCreate, on_render: OnRender, on_reset: OnReset) {
         ON_CREATE = Some(on_create);
         ON_RENDER = Some(on_render);
         ON_RESET = Some(on_reset);
+        ON_DESTROY = Some(on_destroy);
 
         DEVICE_HOOK = Some(hook);
     }
-    //    } else {
-    //        println!("D3D9 proxy: Couldn't find \"Direct3DCreate9\" in \"D3D9.DLL\"");
-    //    }
 }
 
 pub fn leak<T>(value: T) -> *mut T {
@@ -119,7 +123,9 @@ fn create_vftable() -> IDirect3D9Vtbl {
 // IUNKOWN ==================
 
 unsafe extern "system" fn QueryInterface(
-    this: *mut IUnknown, riid: REFIID, ppvObject: *mut *mut c_void,
+    this: *mut IUnknown,
+    riid: REFIID,
+    ppvObject: *mut *mut c_void,
 ) -> HRESULT {
     let origin = Direct3D::origin(this as *mut _);
     let result = origin.QueryInterface(riid, ppvObject);
@@ -149,7 +155,8 @@ unsafe extern "system" fn Release(this: *mut IUnknown) -> ULONG {
 // IDIRECT3D9 =======================================
 
 unsafe extern "system" fn RegisterSoftwareDevice(
-    this: *mut IDirect3D9, pInitializeFunction: *mut VOID,
+    this: *mut IDirect3D9,
+    pInitializeFunction: *mut VOID,
 ) -> HRESULT {
     Direct3D::origin(this).RegisterSoftwareDevice(pInitializeFunction)
 }
@@ -159,32 +166,47 @@ unsafe extern "system" fn GetAdapterCount(this: *mut IDirect3D9) -> UINT {
 }
 
 unsafe extern "system" fn GetAdapterIdentifier(
-    this: *mut IDirect3D9, Adapter: UINT, Flags: DWORD, pIdentifier: *mut D3DADAPTER_IDENTIFIER9,
+    this: *mut IDirect3D9,
+    Adapter: UINT,
+    Flags: DWORD,
+    pIdentifier: *mut D3DADAPTER_IDENTIFIER9,
 ) -> HRESULT {
     Direct3D::origin(this).GetAdapterIdentifier(Adapter, Flags, pIdentifier)
 }
 
 unsafe extern "system" fn GetAdapterModeCount(
-    this: *mut IDirect3D9, Adapter: UINT, Format: D3DFORMAT,
+    this: *mut IDirect3D9,
+    Adapter: UINT,
+    Format: D3DFORMAT,
 ) -> UINT {
     Direct3D::origin(this).GetAdapterModeCount(Adapter, Format)
 }
 
 unsafe extern "system" fn EnumAdapterModes(
-    this: *mut IDirect3D9, Adapter: UINT, Format: D3DFORMAT, Mode: UINT, pMode: *mut D3DDISPLAYMODE,
+    this: *mut IDirect3D9,
+    Adapter: UINT,
+    Format: D3DFORMAT,
+    Mode: UINT,
+    pMode: *mut D3DDISPLAYMODE,
 ) -> HRESULT {
     Direct3D::origin(this).EnumAdapterModes(Adapter, Format, Mode, pMode)
 }
 
 unsafe extern "system" fn GetAdapterDisplayMode(
-    this: *mut IDirect3D9, Adapter: UINT, pMode: *mut D3DDISPLAYMODE,
+    this: *mut IDirect3D9,
+    Adapter: UINT,
+    pMode: *mut D3DDISPLAYMODE,
 ) -> HRESULT {
     Direct3D::origin(this).GetAdapterDisplayMode(Adapter, pMode)
 }
 
 unsafe extern "system" fn CheckDeviceType(
-    this: *mut IDirect3D9, Adapter: UINT, DevType: D3DDEVTYPE, AdapterFormat: D3DFORMAT,
-    BackBufferFormat: D3DFORMAT, bWindowed: BOOL,
+    this: *mut IDirect3D9,
+    Adapter: UINT,
+    DevType: D3DDEVTYPE,
+    AdapterFormat: D3DFORMAT,
+    BackBufferFormat: D3DFORMAT,
+    bWindowed: BOOL,
 ) -> HRESULT {
     Direct3D::origin(this).CheckDeviceType(
         Adapter,
@@ -196,8 +218,13 @@ unsafe extern "system" fn CheckDeviceType(
 }
 
 unsafe extern "system" fn CheckDeviceFormat(
-    this: *mut IDirect3D9, Adapter: UINT, DeviceType: D3DDEVTYPE, AdapterFormat: D3DFORMAT,
-    Usage: DWORD, RType: D3DRESOURCETYPE, CheckFormat: D3DFORMAT,
+    this: *mut IDirect3D9,
+    Adapter: UINT,
+    DeviceType: D3DDEVTYPE,
+    AdapterFormat: D3DFORMAT,
+    Usage: DWORD,
+    RType: D3DRESOURCETYPE,
+    CheckFormat: D3DFORMAT,
 ) -> HRESULT {
     Direct3D::origin(this).CheckDeviceFormat(
         Adapter,
@@ -210,8 +237,13 @@ unsafe extern "system" fn CheckDeviceFormat(
 }
 
 unsafe extern "system" fn CheckDeviceMultiSampleType(
-    this: *mut IDirect3D9, Adapter: UINT, DeviceType: D3DDEVTYPE, SurfaceFormat: D3DFORMAT,
-    Windowed: BOOL, MultiSampleType: D3DMULTISAMPLE_TYPE, pQualityLevels: *mut DWORD,
+    this: *mut IDirect3D9,
+    Adapter: UINT,
+    DeviceType: D3DDEVTYPE,
+    SurfaceFormat: D3DFORMAT,
+    Windowed: BOOL,
+    MultiSampleType: D3DMULTISAMPLE_TYPE,
+    pQualityLevels: *mut DWORD,
 ) -> HRESULT {
     Direct3D::origin(this).CheckDeviceMultiSampleType(
         Adapter,
@@ -224,8 +256,12 @@ unsafe extern "system" fn CheckDeviceMultiSampleType(
 }
 
 unsafe extern "system" fn CheckDepthStencilMatch(
-    this: *mut IDirect3D9, Adapter: UINT, DeviceType: D3DDEVTYPE, AdapterFormat: D3DFORMAT,
-    RenderTargetFormat: D3DFORMAT, DepthStencilFormat: D3DFORMAT,
+    this: *mut IDirect3D9,
+    Adapter: UINT,
+    DeviceType: D3DDEVTYPE,
+    AdapterFormat: D3DFORMAT,
+    RenderTargetFormat: D3DFORMAT,
+    DepthStencilFormat: D3DFORMAT,
 ) -> HRESULT {
     Direct3D::origin(this).CheckDepthStencilMatch(
         Adapter,
@@ -237,7 +273,10 @@ unsafe extern "system" fn CheckDepthStencilMatch(
 }
 
 unsafe extern "system" fn CheckDeviceFormatConversion(
-    this: *mut IDirect3D9, Adapter: UINT, DeviceType: D3DDEVTYPE, SourceFormat: D3DFORMAT,
+    this: *mut IDirect3D9,
+    Adapter: UINT,
+    DeviceType: D3DDEVTYPE,
+    SourceFormat: D3DFORMAT,
     TargetFormat: D3DFORMAT,
 ) -> HRESULT {
     Direct3D::origin(this).CheckDeviceFormatConversion(
@@ -249,7 +288,10 @@ unsafe extern "system" fn CheckDeviceFormatConversion(
 }
 
 unsafe extern "system" fn GetDeviceCaps(
-    this: *mut IDirect3D9, Adapter: UINT, DeviceType: D3DDEVTYPE, pCaps: *mut D3DCAPS9,
+    this: *mut IDirect3D9,
+    Adapter: UINT,
+    DeviceType: D3DDEVTYPE,
+    pCaps: *mut D3DCAPS9,
 ) -> HRESULT {
     Direct3D::origin(this).GetDeviceCaps(Adapter, DeviceType, pCaps)
 }
@@ -259,8 +301,12 @@ unsafe extern "system" fn GetAdapterMonitor(this: *mut IDirect3D9, Adapter: UINT
 }
 
 unsafe extern "system" fn CreateDevice(
-    this: *mut IDirect3D9, Adapter: UINT, DeviceType: D3DDEVTYPE, hFocusWindow: HWND,
-    BehaviorFlags: DWORD, pPresentationParameters: *mut D3DPRESENT_PARAMETERS,
+    this: *mut IDirect3D9,
+    Adapter: UINT,
+    DeviceType: D3DDEVTYPE,
+    hFocusWindow: HWND,
+    BehaviorFlags: DWORD,
+    pPresentationParameters: *mut D3DPRESENT_PARAMETERS,
     ppReturnedDeviceInterface: *mut *mut IDirect3DDevice9,
 ) -> HRESULT {
     let result = Direct3D::origin(this).CreateDevice(
@@ -274,9 +320,13 @@ unsafe extern "system" fn CreateDevice(
 
     if result == 0 {
         let proxy = Direct3D::restore(this);
-        let device =
-            super::device_proxy::set_proxy(*ppReturnedDeviceInterface, ON_RENDER, ON_RESET);
-            
+        let device = super::device_proxy::set_proxy(
+            *ppReturnedDeviceInterface,
+            ON_RENDER,
+            ON_RESET,
+            ON_DESTROY,
+        );
+
         *ppReturnedDeviceInterface = device;
 
         (proxy.on_create)();
