@@ -6,5 +6,5 @@ edition = "2018"
 
 [dependencies]
 winapi = { version = "0.3.8", features = ["d3d9", "libloaderapi", "winuser", "winver"] }
-detour = { version = "0.7.1" }
+detour = { git = "https://github.com/darfink/detour-rs", rev = "3b6f17a" }
 log = "0.4.14"
