@@ -55,3 +55,31 @@ pub struct RwV3d {
     pub y: f32,
     pub z: f32,
 }
+
+#[repr(C)]
+pub struct RwGlobals {
+    pub cur_camera: *mut (),
+    pub cur_world: *mut (),
+    pub render_frame: u16,
+    pub light_frame: u16,
+    pad: [u16; 2],
+    pub open_device: RwDevice,
+    // TODO: ...
+}
+
+pub type RwRenderStateSetFunction = extern "C" fn(state: u32, param: *mut ()) -> bool;
+pub type RwRenderStateGetFunction = extern "C" fn(state: u32, param: *mut ()) -> bool;
+
+pub const RENDERSTATETEXTUREFILTER: u32 = 9;
+pub const FILTERNEAREST: u32 = 1;
+
+#[repr(C)]
+pub struct RwDevice {
+    pub gamma_correction: f32,
+    pub system: *mut (), // func ptr
+    pub z_buffer_near: f32,
+    pub z_buffer_far: f32,
+    pub render_state_set: RwRenderStateSetFunction,
+    pub render_state_get: RwRenderStateGetFunction,
+    // TODO: ...
+}

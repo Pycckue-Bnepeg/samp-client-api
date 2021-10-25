@@ -1,12 +1,15 @@
 use std::ptr::NonNull;
 
-use crate::gta::rw::rwcore::RwTexture;
 use crate::gta::matrix::CRect;
+use crate::gta::rw::rwcore::RwTexture;
 use crate::gta::rw::rwplcore::RwRGBA;
 
 type SpriteCreate = extern "thiscall" fn(this: *mut SpriteInner);
 type SpriteDestroy = extern "thiscall" fn(this: *mut SpriteInner);
-type SpriteDraw = extern "thiscall" fn(this: *mut SpriteInner, posn: *mut CRect, color: *mut RwRGBA);
+type SpriteDraw =
+    extern "thiscall" fn(this: *mut SpriteInner, posn: *mut CRect, color: *mut RwRGBA);
+
+type SpriteSetRenderState = extern "thiscall" fn(this: *mut SpriteInner);
 
 pub struct Sprite {
     inner: NonNull<SpriteInner>,
@@ -20,7 +23,7 @@ struct SpriteInner {
 impl Sprite {
     pub fn new() -> Sprite {
         let inner = Box::new(SpriteInner {
-           texture: std::ptr::null_mut(),
+            texture: std::ptr::null_mut(),
         });
 
         let inner = Box::into_raw(inner);
@@ -34,7 +37,14 @@ impl Sprite {
     }
 
     pub fn set_texture(&mut self, texture: *mut RwTexture) {
-        unsafe { self.inner.as_mut().texture = texture; }
+        unsafe {
+            self.inner.as_mut().texture = texture;
+        }
+    }
+
+    pub fn set_render_state(&mut self) {
+        let func: SpriteSetRenderState = unsafe { std::mem::transmute(0x727B30) };
+        func(self.inner.as_ptr());
     }
 
     pub fn draw(&mut self, mut pos: CRect, mut color: RwRGBA) {
