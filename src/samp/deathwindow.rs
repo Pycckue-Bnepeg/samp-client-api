@@ -1,3 +1,7 @@
+use detour::GenericDetour;
+
+use super::version::{version, Version};
+
 struct DeathWindowDrawHook {
     hook: GenericDetour<extern "thiscall" fn(*mut ())>,
     callback: Box<dyn FnMut()>,
@@ -29,14 +33,14 @@ impl DeathWindow {
             let ptr = super::handle().add(address);
             let func: extern "thiscall" fn(*mut ()) = std::mem::transmute(ptr);
 
-            GenericDetour::new(func, deathwindow_draw).map(|hook| {
+            if let Ok(hook) = GenericDetour::new(func, deathwindow_draw) {
                 let _ = hook.enable();
 
                 DRAW_HOOK = Some(DeathWindowDrawHook {
                     hook,
                     callback: Box::new(callback),
                 });
-            });
+            };
         }
     }
 }
