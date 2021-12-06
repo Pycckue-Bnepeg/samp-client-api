@@ -1,6 +1,6 @@
-use super::{handle, CStdString, BOOL, D3DCOLOR, GTAREF, ID, NUMBER, TICK};
 use super::packets;
 use super::players::GamePed;
+use super::{handle, CStdString, BOOL, D3DCOLOR, GTAREF, ID, NUMBER, TICK};
 use crate::gta::matrix::{CVector, RwMatrix};
 
 use std::ffi::{c_void, CStr};
@@ -12,6 +12,7 @@ pub const CGAME: usize = 0x26E8F4;
 pub const CGAME_SETCURSORMODE: usize = 0x9FFE0;
 pub const CGAME_PROCESSINPUTENABLING: usize = 0x9FEC0;
 pub const CDIALOG: usize = 0x26E898;
+pub const CDEATHWINDOW_DRAW: usize = 0x69B70;
 
 const SPEC_MODE_VEHICLE: i8 = 3;
 const SPEC_MODE_PLAYER: i8 = 4;
@@ -189,7 +190,7 @@ impl CPlayerInfo {
 
 #[repr(C, packed)]
 pub struct CRemotePlayer {
-    pub m_pPed: *mut CPed, // CPed
+    pub m_pPed: *mut CPed,         // CPed
     pub m_pVehicle: *mut CVehicle, // CVehicle
     pub m_nId: ID,
     pub m_nVehicleId: ID,
@@ -247,7 +248,7 @@ impl CRemotePlayer {
             17 => self.m_onfootData.m_position.clone(),    // onfoot
             18 => self.m_passengerData.m_position.clone(), // passenger
             19 => self.m_incarData.m_position.clone(),     // driver
-            _ => CVector::zero(), // none
+            _ => CVector::zero(),                          // none
         }
     }
 
@@ -268,7 +269,7 @@ impl CRemotePlayer {
     pub fn velocity(&self) -> CVector {
         match self.m_nState {
             17 => self.m_onfootData.m_speed.clone(), // onfoot
-            19 => self.m_incarData.m_speed.clone(), // driver
+            19 => self.m_incarData.m_speed.clone(),  // driver
             _ => CVector::zero(),
         }
     }
@@ -709,11 +710,10 @@ pub struct CObject__bindgen_ty_1__bindgen_ty_1 {
 #[repr(C, packed)]
 pub struct CObject__bindgen_ty_1__bindgen_ty_2 {
     pub m_bTextureWasCreated: [BOOL; 16usize],
-    pub m_textInfo:
-    [CObject__bindgen_ty_1__bindgen_ty_2__bindgen_ty_1; 16usize],
+    pub m_textInfo: [CObject__bindgen_ty_1__bindgen_ty_2__bindgen_ty_1; 16usize],
     pub m_szData: [*mut ::std::os::raw::c_char; 16usize],
     pub m_pBackgroundTexture: [*mut (); 16usize], // IDirect3DTexture9
-    pub m_pTexture: [*mut (); 16usize], // IDirect3DTexture9
+    pub m_pTexture: [*mut (); 16usize],           // IDirect3DTexture9
 }
 
 #[repr(C, packed)]
