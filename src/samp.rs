@@ -1,3 +1,4 @@
+pub mod deathwindow;
 pub mod inputs;
 pub mod netgame;
 pub mod objects;
@@ -7,7 +8,7 @@ pub mod v037;
 pub mod v037r3;
 pub mod version;
 
-use version::{Version, version};
+use version::{version, Version};
 
 pub type TICK = std::os::raw::c_ulong;
 pub type BOOL = std::os::raw::c_int;
@@ -89,17 +90,13 @@ impl From<v037::Gamestate> for Gamestate {
 
 pub fn gamestate() -> Gamestate {
     match version() {
-        Version::V037 => {
-            v037::CNetGame::get()
-                .map(|netgame| netgame.gamestate().into())
-                .unwrap_or(Gamestate::None)
-        }
+        Version::V037 => v037::CNetGame::get()
+            .map(|netgame| netgame.gamestate().into())
+            .unwrap_or(Gamestate::None),
 
-        Version::V037R3 => {
-            v037r3::CNetGame::get()
-                .map(|netgame| netgame.gamestate().into())
-                .unwrap_or(Gamestate::None)
-        }
+        Version::V037R3 => v037r3::CNetGame::get()
+            .map(|netgame| netgame.gamestate().into())
+            .unwrap_or(Gamestate::None),
 
         _ => Gamestate::None,
     }
