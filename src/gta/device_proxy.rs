@@ -9,8 +9,6 @@ use winapi::um::unknwnbase::{IUnknown, IUnknownVtbl};
 use winapi::um::wingdi::{PALETTEENTRY, RGNDATA};
 use winapi::um::winnt::{HANDLE, HRESULT, VOID};
 
-use crate::utils::error_message_box;
-
 use super::d9_proxy::{leak, OnDestroy, OnRender, OnReset};
 
 static mut D3D9_DEVICE: *mut IDirect3DDevice9 = 0 as *mut _;
@@ -338,10 +336,6 @@ unsafe extern "system" fn Present(
     hDestWindowOverride: HWND,
     pDirtyRegion: *const RGNDATA,
 ) -> HRESULT {
-    if let Some(func) = RENDER_HOOK_FN {
-        func(device());
-    }
-
     (*D3D9_DEVICE).Present(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion)
 }
 
@@ -634,6 +628,10 @@ unsafe extern "system" fn BeginScene(_this: *mut IDirect3DDevice9) -> HRESULT {
 }
 
 unsafe extern "system" fn EndScene(_this: *mut IDirect3DDevice9) -> HRESULT {
+    if let Some(func) = RENDER_HOOK_FN {
+        func(device());
+    }
+
     (*D3D9_DEVICE).EndScene()
 }
 
