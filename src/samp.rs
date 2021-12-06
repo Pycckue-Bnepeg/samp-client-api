@@ -1,9 +1,12 @@
+pub mod audio_stream;
 pub mod deathwindow;
 pub mod inputs;
+pub mod label_pool;
 pub mod netgame;
 pub mod objects;
 pub mod packets;
 pub mod players;
+pub mod spawnscreen;
 pub mod v037;
 pub mod v037r3;
 pub mod version;
